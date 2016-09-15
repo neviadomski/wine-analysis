@@ -1,8 +1,9 @@
 White wine exploration and building prediction model by Sergei Neviadomski
 ========================================================
 
-    In this project we analyse white wine in R. We'll try to find patterns in objective wine properties like pH, alcohol and etc. We'll also explore relations of this properties and subjective assessment of wine quality (ranking by expert tasters). In the end we'll build linear regression model and try to predict quality of wine by wine chemical properties.
-    First of all we load all packages we need for our exploration and our data into R. If you want to do it on your local machine you have to install all the packages we want to load first and copy csv file with wine data (wineQualityWhites.csv) to you working directory.
+In this project we analyse white wine in R. We'll try to find patterns in objective wine properties like pH, alcohol and etc. We'll also explore relations of this properties and subjective assessment of wine quality (ranking by expert tasters). In the end we'll build linear regression model and try to predict quality of wine by wine chemical properties.
+
+First of all we load all packages we need for our exploration and our data into R. If you want to do it on your local machine you have to install all the packages we want to load first and copy csv file with wine data (wineQualityWhites.csv) to you working directory.
     
 ```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
 # Loading all of the packages for our analysis.
@@ -11,16 +12,16 @@ White wine exploration and building prediction model by Sergei Neviadomski
 
 library(ggplot2)
 library(GGally)
-library(gridExtra)
+library(corrplot)
 
 ```
 
 ```{r echo=FALSE, Load_the_Data}
 # Loading the Data
-wines = read.csv("wineQualityWhites.csv")
-wines$quality_int = wines$quality
-wines$quality = factor(wines$quality)
-wines = wines[, 2:14]
+wines <- read.csv("wineQualityWhites.csv")
+wines$quality_int <- wines$quality
+wines$quality <- factor(wines$quality)
+wines <- subset(wines, select = -c(X))
 
 ```
 
@@ -35,52 +36,57 @@ str(wines)
 summary(wines)
  
 ```
-   
-   
-    We have 11 dependent variables which represent different chemical features of white wine and output variable which is wine quality. Last variable is equal to wine quality but it stored in dataframe as factor. We've got 4898 observations. All of them represents different brands and types of white wines. 
-    Now I want to plot histograms of all variables to get an idea about its distribution and decide for the things I will have a look deeper later.
-    
+
+We have 11 dependent variables which represent different chemical features of white wine and output variable which is wine quality. Last variable is equal to wine quality but it stored in dataframe as factor. We've got 4898 observations. All of them represents different brands and types of white wines. 
+
+Now I want to plot histograms of all variables to get an idea about its distribution and decide for the things I will have a look deeper later. First 3 histograms are clear and informative. 
     
 ```{r echo=FALSE, message=FALSE, warning=FALSE, Building_Plots}
 #Building plots
-g1a <- ggplot(aes(fixed.acidity), data = wines) + geom_histogram(binwidth = 0.2)
-g1b <- ggplot(aes(volatile.acidity), data = wines) + geom_histogram(binwidth = 0.01)
-g1c <- ggplot(aes(citric.acid), data = wines) + geom_histogram(binwidth = 0.05)
-g1d <- ggplot(aes(residual.sugar), data = wines) + geom_histogram(binwidth = 1)
-g2d <- ggplot(aes(residual.sugar), data = wines) + geom_histogram(binwidth = 0.1) + scale_x_log10()
-g1e <- ggplot(aes(chlorides), data = wines) + geom_histogram(binwidth = 0.01)
-g2e <- ggplot(aes(chlorides), data = wines) + geom_histogram(binwidth = 0.001) + xlim(c(0,quantile(wines$chlorides, .98)))
-g1f <- ggplot(aes(free.sulfur.dioxide), data = wines) + geom_histogram(binwidth = 5)
-g2f <- ggplot(aes(free.sulfur.dioxide), data = wines) + geom_histogram(binwidth = 1) + xlim(c(0,quantile(wines$free.sulfur.dioxide, .99)))
-g1g <- ggplot(aes(total.sulfur.dioxide), data = wines) + geom_histogram(binwidth = 5)
-g2g <- ggplot(aes(total.sulfur.dioxide), data = wines) + geom_histogram(binwidth = 5) + xlim(c(0,quantile(wines$total.sulfur.dioxide, .995)))
-g1h <- ggplot(aes(density), data = wines) + geom_histogram(binwidth = 0.001)
-g2h <- ggplot(aes(density), data = wines) + geom_histogram(binwidth = 0.0001) + xlim(c(0.98,quantile(wines$density, .999)))
-g1i <- ggplot(aes(pH), data = wines) + geom_histogram(binwidth = 0.01)
-g1j <- ggplot(aes(sulphates), data = wines) + geom_histogram(binwidth = 0.01)
-g1k <- ggplot(aes(alcohol), data = wines) + geom_histogram(binwidth = 0.1)
-g1l <- ggplot(aes(quality), data = wines) + geom_bar()
-
-#Printing plots
-grid.arrange(g1a, g1b, g1c, g1d, g1e, g1f, g1g, g1h, g1i, g1j, g1k, g1l, ncol = 2)
-
+ggplot(aes(fixed.acidity), data = wines) + geom_histogram(binwidth = 0.2)
+ggplot(aes(volatile.acidity), data = wines) + geom_histogram(binwidth = 0.01)
+ggplot(aes(citric.acid), data = wines) + geom_histogram(binwidth = 0.05)
 ```
-    
-    We could see from this histograms that distribution of most variable are bell-shaped. Though distribution of residual.sugar variable doesn't look approximately normally distibuted. But we can modify it by taking log of our variable. I also want to modify plots of chlorides, free.sulfur.dioxide, total.sulfur.dioxide and density variables by cutting outliers. This will help us to see patterns on histogram more clearly.      
-```{r echo=FALSE, message=FALSE, warning=FALSE, Final_plot}
+
+Though distribution of residual.sugar variable on the fourth plot doesn't look approximately normally distibuted. But we can modify it by taking log of our variable.
+      
+```{r echo=FALSE, message=FALSE, warning=FALSE, Building_Plots_2}
+ggplot(aes(residual.sugar), data = wines) + geom_histogram(binwidth = 1)
+ggplot(aes(residual.sugar), data = wines) + geom_histogram(binwidth = 0.1) + scale_x_log10()
 #Adding log modified residual.sugar to dataset
 wines$log_residual.sugar <- log(wines$residual.sugar)
-#Printing final plot
-grid.arrange(g1a, g1b, g1c, g2d, g2e, g2f, g2g, g2h, g1i, g1j, g1k, g1l, ncol = 2)
-
 ```
 
- 
+Variables on the next 4 plots have many outlaiers, so I've cut them to get more clear and detailed picture.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Building_Plots_3}
+ggplot(aes(chlorides), data = wines) + geom_histogram(binwidth = 0.001) +
+    xlim(c(0,quantile(wines$chlorides, .98)))
+ggplot(aes(free.sulfur.dioxide), data = wines) + geom_histogram(binwidth = 1) + 
+    xlim(c(0,quantile(wines$free.sulfur.dioxide, .99)))
+ggplot(aes(total.sulfur.dioxide), data = wines) + geom_histogram(binwidth = 5) +
+    xlim(c(0,quantile(wines$total.sulfur.dioxide, .995)))
+ggplot(aes(density), data = wines) + geom_histogram(binwidth = 0.0001) + 
+    xlim(c(0.98,quantile(wines$density, .999)))
+```
+
+We don't need to modify last 4 plots. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Building_Plots_4}
+ggplot(aes(pH), data = wines) + geom_histogram(binwidth = 0.01)
+ggplot(aes(sulphates), data = wines) + geom_histogram(binwidth = 0.01)
+ggplot(aes(alcohol), data = wines) + geom_histogram(binwidth = 0.1)
+ggplot(aes(quality), data = wines) + geom_bar()
+```
+
+I transformed residual sugar and cut outliers of chlorides, free.sulfur.dioxide, total.sulfur.dioxide and density. Now we can see patterns of our data more clearly. Main conclusion of this section is that distribution of most variable are bell-shaped (approximately normally distributed). 
+
+
 # Univariate Analysis
 
 ### Structure of dataset 
 
- There are 4,898 observations in our dataset all of which represent white wine brand. For each observation we have 12 features (Fixed Acidity, Volatile Acidity, Citric Acid, Residual Sugar, Chlorides, Free Sulfur Dioxide, Total Sulfur Dioxide, Density, pH, Sulphates, Alcohol, and Quality). All variables are numeric.
+There are 4,898 observations in our dataset all of which represent white wine brand. For each observation we have 12 features (Fixed Acidity, Volatile Acidity, Citric Acid, Residual Sugar, Chlorides, Free Sulfur Dioxide, Total Sulfur Dioxide, Density, pH, Sulphates, Alcohol, and Quality). All variables are numeric.
 
 All of our variable except alcohol and residual sugar are approximately normally distributed (bell-shaped). Alcohol is positively skewed. Log of residual sugar bimodal and positively skewed. 
 
@@ -106,42 +112,61 @@ Most of our variables is approximately normally distributed with lots of outlier
 
 I want to start bivariate analysis section by creating correlation and plot matrices. This will help us choose important variables for our further exploration. Plot matrix is built from small sample of our data because building this matrix is time consuming activity. That's why you could get slightly different result if doing on your local machine.
 
-```{r echo=FALSE, message=FALSE, warning=FALSE, Correlation_matrix_and_plot_matrix}
-#Correlation matrix without quality as factor
-cor(wines[c(-12)])
+```{r echo=FALSE, message=FALSE, warning=FALSE, Correlation_matrix, fig.width = 9, fig.height= 9}
+#Building correlation matrix using corrplot library
+cor_wines <- cor(subset(wines, select = -c(quality)))
+legend_color <- colorRampPalette(c("navy", "deepskyblue", "darkblue"))
+corrplot(cor_wines, method="number", col = legend_color(20), tl.col = "grey40")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Plot_matrix, fig.width = 12, fig.height= 12}
 #Sampling
 wines_sample <- wines[sample.int(nrow(wines),800),]
 #Building plot matrix
-ggpairs(wines_sample, axisLabels = 'internal')
+ggpairs(wines_sample, columnLabels = c("Fix Acid","Vol Acid","Cit Acid","Res Sugar",
+                                       "Chlorides","Free SO2","Total SO2","Density","pH",
+                                       "Sulphates","Alcohol","Quality factor","Quality", "Log Sugar")) + 
+    theme(axis.ticks = element_blank(), axis.text = element_blank())
 ```
 
-We observe highest correlations in pairs residual.sugar - density, density - alcohol, free.sulfur.dioxide - total.sulfur.dioxide, fixed.acidity - pH. Let's make scatterplots of these pairs.
+After seeing correlation and plot matrices we can observe highest correlations in pairs residual.sugar - density, density - alcohol, free.sulfur.dioxide - total.sulfur.dioxide, fixed.acidity - pH. Let's make scatterplots of these pairs.
 
 ```{r echo=FALSE, Higher_correlation_variables_plots}
-ggplot(aes(x = residual.sugar, y = density), data = subset(wines, residual.sugar < quantile(wines$residual.sugar, .999))) + geom_point(alpha = 0.1) + geom_smooth()
+ggplot(aes(x = residual.sugar, y = density), data = subset(wines, residual.sugar < quantile(wines$residual.sugar, .999))) + 
+    geom_point(alpha = 0.1) + geom_smooth()
 
-ggplot(aes(x = density, y = alcohol), data = subset(wines, density < quantile(wines$density, .999))) + geom_point(alpha = 0.1) + geom_smooth()
+ggplot(aes(x = density, y = alcohol), data = subset(wines, density < quantile(wines$density, .999))) +
+    geom_point(alpha = 0.1) + geom_smooth()
 
-ggplot(aes(x = free.sulfur.dioxide, y = total.sulfur.dioxide), data = subset(wines, free.sulfur.dioxide < quantile(wines$free.sulfur.dioxide, .995))) + geom_point(alpha = 0.1) + geom_smooth()
+ggplot(aes(x = free.sulfur.dioxide, y = total.sulfur.dioxide), data = 
+           subset(wines, free.sulfur.dioxide < quantile(wines$free.sulfur.dioxide, .995))) +
+    geom_point(alpha = 0.1) + geom_smooth()
 
-ggplot(aes(x = fixed.acidity, y = pH), data = subset(wines, fixed.acidity < quantile(wines$fixed.acidity, .99))) + geom_point(alpha = 0.1) + geom_smooth(method = "lm")
+ggplot(aes(x = fixed.acidity, y = pH), data = subset(wines, fixed.acidity < quantile(wines$fixed.acidity, .99))) +
+    geom_point(alpha = 0.1) + geom_smooth(method = "lm")
 ```
 
-Now I want to scrutinize relation of quality to density and alcohol. These two variables have highest correlation with quality.
+Now I want to scrutinize relation of quality to density and alcohol. These two variables have highest correlation with quality. for each of these variables I'll build scatterplot, box plots for every quality level and summary table for every quality level.
 
 ```{r echo=FALSE, Bivariate_Plots}
 #Analyzing impact of density to quality
-ggplot(aes(x = density, y = quality), data = subset(wines, density < quantile(wines$density, .999))) + geom_jitter(height = 0.25, alpha = 0.05)
-ggplot(aes(y = density, x = quality), data = subset(wines, residual.sugar < quantile(wines$residual.sugar, .999))) + geom_boxplot()
+ggplot(aes(x = density, y = quality), data = subset(wines, density < quantile(wines$density, .999))) +
+    geom_jitter(height = 0.25, alpha = 0.05)
+ggplot(aes(y = density, x = quality), data = subset(wines, residual.sugar < quantile(wines$residual.sugar, .999))) +
+    geom_boxplot()
 tapply(wines$density, wines$quality, summary)
+```
 
+Here we can see that wines with quality level of 5 tend to be more dense and wines with quality level more than 5 getting less dense with every next level. 
+
+```{r echo=FALSE, Bivariate_Plots_2}
 #Analyzing impact of alcohol to quality
 ggplot(aes(x = alcohol, y = quality), data = wines) + geom_jitter(height = 0.25, alpha = 0.02)
 ggplot(aes(y = alcohol, x = quality), data = wines) + geom_boxplot()
 tapply(wines$alcohol, wines$quality, summary)
-
 ```
 
+Here is the opposite picture. wines with quality level of 5 tend to contain less alcohol. Every next level quality make wine more alcoholic.
 
 # Bivariate Analysis
 
@@ -179,24 +204,29 @@ wines$density.bin <- cut(wines$density, c(0.9,0.9915,0.9935,0.996,1.1))
 wines$alcohol.bin <- cut(wines$alcohol, c(8,9.5,10.4,11.4,14.2))
 
 # 3factor plots
-ggplot(aes(y = density, x = total.sulfur.dioxide, color = residual.sugar), data = subset(wines, density < quantile(wines$density, .999))) + geom_point()
-ggplot(aes(y = density, x = total.sulfur.dioxide, color = residual.sugar.bin), data = wines) + geom_smooth()
+ggplot(aes(y = density, x = alcohol, color = residual.sugar), data = 
+           subset(wines, density < quantile(wines$density, .999))) + geom_point()
+ggplot(aes(y = density, x = alcohol, color = residual.sugar.bin), data = wines) +
+    geom_smooth()
 
 ```
 
-First two plot of this section show us that density depends on total sulfur dioxide and residual sugar. Next to show that density depends on fixed acidity too.
+First two plot of this section show us that density depends on alcohol and residual sugar. Next two plots show that density depends on fixed acidity too.
 
 ```{r echo=FALSE, Multivariate_Plots_2}
 # 3factor plots
-ggplot(aes(y = density, x = total.sulfur.dioxide, color = fixed.acidity), data = subset(wines, density < quantile(wines$density, .999))) + geom_point()
-ggplot(aes(y = density, x = total.sulfur.dioxide, color = fixed.acidity.bin), data = wines) + geom_smooth()
+ggplot(aes(y = density, x = total.sulfur.dioxide, color = fixed.acidity), data = 
+           subset(wines, density < quantile(wines$density, .999))) + geom_point()
+ggplot(aes(y = density, x = total.sulfur.dioxide, color = fixed.acidity.bin), data = 
+           wines) + geom_smooth()
 
 ```
 
 I've made last plot to show how quality and total sulfur dioxide relation depends on density and alcohol. 
 
 ```{r echo=FALSE, Multivariate_Plots_3}
-ggplot(aes(y = quality, x = total.sulfur.dioxide), data = wines) + facet_grid(density.bin ~ alcohol.bin) + geom_point(alpha = 0.1)
+ggplot(aes(y = quality, x = total.sulfur.dioxide), data = wines) +
+    facet_grid(density.bin ~ alcohol.bin) + geom_point(alpha = 0.1)
 ```
 
 After scrutinizing data it's time for model building. First of all I want to show how powerful could be prediction models even so simple as linear regression model. Let's build linear regression model to predict density. In our first try we'll use all of available variables to build our model. 
@@ -264,7 +294,8 @@ In this section I want to show 3 most important plots from this project.
 ### Plot One
 
 ```{r echo=FALSE, Plot_One}
-ggplot(aes(quality), data = wines) + geom_bar(fill = I('blue')) + labs(x = "Quality", y = "Frequency", title = "Quality distribution") 
+ggplot(aes(quality), data = wines) + geom_bar(fill = I('blue')) + 
+    labs(x = "Quality (scale from 1 to 10)", y = "Frequency", title = "Quality distribution") 
 
 ```
 
@@ -275,7 +306,9 @@ This plot is important for our analysis. It shows how much different types of wi
 ### Plot Two
 
 ```{r echo=FALSE, Plot_Two}
-ggplot(aes(y = alcohol, x = quality), data = wines) + geom_boxplot(color = I('blue'), outlier.colour=I("black")) + labs(x = "Quality", y = "Alcohol", title = "Alcohol distribution by Quality") + stat_summary(fun.y = mean, geom = "point", shape = 4, color = I("red"))
+ggplot(aes(y = alcohol, x = quality), data = wines) + geom_boxplot(color = I('blue'), outlier.colour=I("black")) + 
+    labs(x = "Quality (scale from 1 to 10)", y = "Alcohol (% by volume)", title = "Alcohol distribution by Quality") + 
+    stat_summary(fun.y = mean, geom = "point", shape = 4, color = I("red"))
 ```
 
 ### Description Two
@@ -285,7 +318,9 @@ This is plot of the most correlated variable in dataset to quality. It shows tha
 ### Plot Three
 
 ```{r echo=FALSE, Plot_Three}
-ggplot(aes(y = density, x = alcohol, color = residual.sugar), data = subset(wines, density < quantile(wines$density, .999))) + geom_point(alpha = 0.5) + scale_colour_gradient(low = "#33ccff", high = "#0000cc", name = "Residual sugar") + labs(x = "Alcohol", y = "Density", title = "Alcohol and Sugar impact on Density of wine")
+ggplot(aes(y = density, x = alcohol, color = residual.sugar), data = subset(wines, density < quantile(wines$density, .999))) + 
+    geom_point(alpha = 0.5) + scale_colour_gradient(low = "#33ccff", high = "#0000cc", name = "Residual sugar (g / dm^3)") + 
+    labs(x = "Alcohol (% by volume)", y = "Density (g / cm^3)", title = "Alcohol and Sugar impact on Density of wine")
 ```
 
 ### Description Three
@@ -296,8 +331,9 @@ On this plot we can see how both Alcohol and Sugar influence on density of wine.
 
 
 # Reflection
+In this project we analysed white wine dataset and tried to build model for prediction of wine quality. We've found many patterns in wine chemical properties and even built regression model for prediction of density of wine. But we weren't able to build model for prediction of wine quality. In my opinion quality is emotional phenomenon and depends on taste, mood and habit, but not on chemical properties.
 
-After sketchy analysis of wine dataset we can come up with two main conclusions:
+So after sketchy analysis of wine dataset we can come up with two main conclusions:
 
 * Wine data has patterns in chemical properties.
 * Quality of wine is difficult to predict by its chemical properties. 
