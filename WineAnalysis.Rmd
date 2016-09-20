@@ -12,7 +12,7 @@ First of all we load all packages we need for our exploration and our data into 
 
 library(ggplot2)
 library(GGally)
-library(corrplot)
+library(gridExtra)
 
 ```
 
@@ -39,47 +39,113 @@ summary(wines)
 
 We have 11 dependent variables which represent different chemical features of white wine and output variable which is wine quality. Last variable is equal to wine quality but it stored in dataframe as factor. We've got 4898 observations. All of them represents different brands and types of white wines. 
 
-Now I want to plot histograms of all variables to get an idea about its distribution and decide for the things I will have a look deeper later. First 3 histograms are clear and informative. 
+Now I want to plot histograms and barcharts of all variables to get an idea about their distributions. 
+
+Next is Volatile acidity. Distribution of this variable is bell-shaped. We can see that there are high quantity of outliers. And there is no need to modify this variable.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Fixed_acidity}
+
+#Function for building grid of boxplot and histogram
+univariate_plots <- function(variable, bin_width, x_lim = NA, dataset = wines) {
+    box_plot = ggplot(aes(x = 1, y = dataset[variable]), data = dataset) +
+        geom_jitter(alpha = 0.1) +
+        geom_boxplot(alpha = 0.2, color = 'blue') +
+        stat_summary(fun.y = mean, geom = "point",
+                     shape = 4, color = I("red"), size = 3) +
+        ylab(variable)
     
-```{r echo=FALSE, message=FALSE, warning=FALSE, Building_Plots}
+    histogram = ggplot(aes(x = dataset[variable]), data = dataset) + 
+        geom_histogram(binwidth = bin_width) +
+        xlab(variable)
+    
+    return(grid.arrange(box_plot, histogram, ncol = 2))
+}
+
+
 #Building plots
-ggplot(aes(fixed.acidity), data = wines) + geom_histogram(binwidth = 0.2)
-ggplot(aes(volatile.acidity), data = wines) + geom_histogram(binwidth = 0.01)
-ggplot(aes(citric.acid), data = wines) + geom_histogram(binwidth = 0.05)
+univariate_plots('fixed.acidity', 0.2)
 ```
 
-Though distribution of residual.sugar variable on the fourth plot doesn't look approximately normally distibuted. But we can modify it by taking log of our variable.
-      
-```{r echo=FALSE, message=FALSE, warning=FALSE, Building_Plots_2}
-ggplot(aes(residual.sugar), data = wines) + geom_histogram(binwidth = 1)
-ggplot(aes(residual.sugar), data = wines) + geom_histogram(binwidth = 0.1) + scale_x_log10()
+Next is Volatile acidity. Distribution of this variable is bell-shaped. We can see that there are high quantity of outliers. And there is no need to modify this variable.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Volatile_acidity}
+univariate_plots('volatile.acidity', 0.01)
+```
+
+Next is citric acidity. And again distribution of this variable is bell-shaped. We can see that there are high quantity of outliers. And there is no need to modify this variable. I also want to emphasize that first three variable represent acidity and could be highly correlated. We should pay due attention to this in our further analysis.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Citric_acidity}
+univariate_plots('citric.acid', 0.05)
+```
+
+Now it's time to analyse residual sugar. Distribution of this variable on the fourth plot doesn't look approximately normally distributed. But we can modify it by taking log of our variable. I'll add log of residual sugar to our dataset because it could fit our model better then original one.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Residual_sugar}
+univariate_plots('residual.sugar', 1)
+
+grid.arrange(ggplot(aes( x = 1, y = residual.sugar), data = wines) +
+                 geom_jitter(alpha = 0.1) +
+                 geom_boxplot(alpha = 0.2, color = 'blue') +
+                 stat_summary(fun.y = mean, geom = "point",
+                              shape = 4, color = I("red"), size = 3) +
+                 scale_y_log10(),
+             ggplot(aes( x   = residual.sugar), data = wines) + 
+                 geom_histogram(binwidth = 0.1) + 
+                 scale_x_log10(), ncol=2)
+
 #Adding log modified residual.sugar to dataset
 wines$log_residual.sugar <- log(wines$residual.sugar)
 ```
 
-Variables on the next 4 plots have many outlaiers, so I've cut them to get more clear and detailed picture.
+Next variable is chlorides. Distribution of this variable is bell-shaped. We can see that there are high quantity of outliers on the right. I've cut 2% of maximum values to make our plots look more detailed. 
 
-```{r echo=FALSE, message=FALSE, warning=FALSE, Building_Plots_3}
-ggplot(aes(chlorides), data = wines) + geom_histogram(binwidth = 0.001) +
-    xlim(c(0,quantile(wines$chlorides, .98)))
-ggplot(aes(free.sulfur.dioxide), data = wines) + geom_histogram(binwidth = 1) + 
-    xlim(c(0,quantile(wines$free.sulfur.dioxide, .99)))
-ggplot(aes(total.sulfur.dioxide), data = wines) + geom_histogram(binwidth = 5) +
-    xlim(c(0,quantile(wines$total.sulfur.dioxide, .995)))
-ggplot(aes(density), data = wines) + geom_histogram(binwidth = 0.0001) + 
-    xlim(c(0.98,quantile(wines$density, .999)))
+```{r echo=FALSE, message=FALSE, warning=FALSE, chlorides}
+univariate_plots('chlorides', 0.001, 
+                 dataset = subset(wines, chlorides <
+                                      quantile(wines$chlorides, .98)))
 ```
 
-We don't need to modify last 4 plots. 
+Next variable is free sulfur dioxide. Distribution of this variable is bell-shaped. We can see that there are some outliers. I've cut 1% of maximum values to make our plots look more detailed. 
 
-```{r echo=FALSE, message=FALSE, warning=FALSE, Building_Plots_4}
-ggplot(aes(pH), data = wines) + geom_histogram(binwidth = 0.01)
-ggplot(aes(sulphates), data = wines) + geom_histogram(binwidth = 0.01)
-ggplot(aes(alcohol), data = wines) + geom_histogram(binwidth = 0.1)
+```{r echo=FALSE, message=FALSE, warning=FALSE, free_sulfur_dioxide}
+univariate_plots('free.sulfur.dioxide', 1,
+                 dataset = subset(wines, free.sulfur.dioxide <
+                                      quantile(wines$free.sulfur.dioxide, .99)))
+```
+
+Next variable is total sulfur dioxide. This variable is potentially highly correlated to free sulfur dioxide. Distribution of this variable is bell-shaped and skewed to left. We can see that there are a few outliers. I've cut 0.5% of maximum values to make our plots look more detailed. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, total_sulfur_dioxide}
+univariate_plots('total.sulfur.dioxide', 5,
+                 dataset = subset(wines, total.sulfur.dioxide <
+                                      quantile(wines$total.sulfur.dioxide, .995)))
+```
+
+Next variable is density of wine. Distribution of this variable is bell-shaped. I've cut 0.1% of maximum values to make our plots look more detailed. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, density}
+univariate_plots('density', 0.0001,
+                 dataset = subset(wines, density <
+                                      quantile(wines$density, .999)))
+```
+
+Next three variable pretty the same. They all are approximately normally distributed and have some outliers.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, last_three}
+univariate_plots('pH', 0.01)
+
+univariate_plots('sulphates', 0.01)
+
+univariate_plots('alcohol', 0.1)
+```
+
+Our last variable is quality. It's different from all others. This is not continuous variable, but categorical. On the bar chart below we can see that most of wines have quality of 5.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, quality}
 ggplot(aes(quality), data = wines) + geom_bar()
 ```
 
-I transformed residual sugar and cut outliers of chlorides, free.sulfur.dioxide, total.sulfur.dioxide and density. Now we can see patterns of our data more clearly. Main conclusion of this section is that distribution of most variable are bell-shaped (approximately normally distributed). 
+We've transformed residual sugar and cut outliers of chlorides, free.sulfur.dioxide, total.sulfur.dioxide and density. Now we can see patterns of our data more clearly. Main conclusion of this section is that distribution of most variable are bell-shaped (approximately normally distributed). 
 
 
 # Univariate Analysis
@@ -110,49 +176,67 @@ Most of our variables is approximately normally distributed with lots of outlier
 
 # Bivariate Plots Section
 
-I want to start bivariate analysis section by creating correlation and plot matrices. This will help us choose important variables for our further exploration. Plot matrix is built from small sample of our data because building this matrix is time consuming activity. That's why you could get slightly different result if doing on your local machine.
-
-```{r echo=FALSE, message=FALSE, warning=FALSE, Correlation_matrix, fig.width = 9, fig.height= 9}
-#Building correlation matrix using corrplot library
-cor_wines <- cor(subset(wines, select = -c(quality)))
-legend_color <- colorRampPalette(c("navy", "deepskyblue", "darkblue"))
-corrplot(cor_wines, method="number", col = legend_color(20), tl.col = "grey40")
-```
+I want to start bivariate analysis section by creating correlation and plot matrix. This will help us choose important variables for our further exploration. Plot matrix is built from small sample of our data because building this matrix is time consuming activity. That's why you could get slightly different result if doing on your local machine.
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE, Plot_matrix, fig.width = 12, fig.height= 12}
 #Sampling
 wines_sample <- wines[sample.int(nrow(wines),800),]
 #Building plot matrix
-ggpairs(wines_sample, columnLabels = c("Fix Acid","Vol Acid","Cit Acid","Res Sugar",
-                                       "Chlorides","Free SO2","Total SO2","Density","pH",
-                                       "Sulphates","Alcohol","Quality factor","Quality", "Log Sugar")) + 
+ggpairs(wines_sample, columnLabels = c("Fix Acid","Vol Acid","Cit Acid",
+                                       "Res Sugar", "Chlorides","Free SO2",
+                                       "Total SO2","Density","pH", "Sulphates",
+                                       "Alcohol","Quality factor","Quality",
+                                       "Log Sugar")) + 
     theme(axis.ticks = element_blank(), axis.text = element_blank())
 ```
 
-After seeing correlation and plot matrices we can observe highest correlations in pairs residual.sugar - density, density - alcohol, free.sulfur.dioxide - total.sulfur.dioxide, fixed.acidity - pH. Let's make scatterplots of these pairs.
+After seeing correlation and plot matrix we can observe highest correlations in pairs residual.sugar - density, density - alcohol, free.sulfur.dioxide - total.sulfur.dioxide, fixed.acidity - pH. Let's make scatterplots of these pairs.
 
-```{r echo=FALSE, Higher_correlation_variables_plots}
-ggplot(aes(x = residual.sugar, y = density), data = subset(wines, residual.sugar < quantile(wines$residual.sugar, .999))) + 
+```{r echo=FALSE, density_sugar}
+ggplot(aes(x = residual.sugar, y = density),
+       data = subset(wines, residual.sugar < 
+                         quantile(wines$residual.sugar, .999))) + 
     geom_point(alpha = 0.1) + geom_smooth()
-
-ggplot(aes(x = density, y = alcohol), data = subset(wines, density < quantile(wines$density, .999))) +
-    geom_point(alpha = 0.1) + geom_smooth()
-
-ggplot(aes(x = free.sulfur.dioxide, y = total.sulfur.dioxide), data = 
-           subset(wines, free.sulfur.dioxide < quantile(wines$free.sulfur.dioxide, .995))) +
-    geom_point(alpha = 0.1) + geom_smooth()
-
-ggplot(aes(x = fixed.acidity, y = pH), data = subset(wines, fixed.acidity < quantile(wines$fixed.acidity, .99))) +
-    geom_point(alpha = 0.1) + geom_smooth(method = "lm")
 ```
 
-Now I want to scrutinize relation of quality to density and alcohol. These two variables have highest correlation with quality. for each of these variables I'll build scatterplot, box plots for every quality level and summary table for every quality level.
+We can observe clear positive correlation on our first pair density and residual sugar. More dense type of wines tend to contain more residual sugar. Coefficient of correlation of 0.857 confirms our inference. 
+
+```{r echo=FALSE, density_alcohol}
+ggplot(aes(x = density, y = alcohol), 
+       data = subset(wines, density < quantile(wines$density, .999))) +
+    geom_point(alpha = 0.1) + geom_smooth()
+```
+
+On the second plot we can see negative correlation between alcohol and density. Our conclusion is more alcoholic wines are less dense. Coefficient of correlation is -0.678.
+
+```{r echo=FALSE, free.sulfur.dioxide_total.sulfur.dioxide}
+ggplot(aes(x = free.sulfur.dioxide, y = total.sulfur.dioxide), 
+       data = subset(wines, free.sulfur.dioxide <
+                         quantile(wines$free.sulfur.dioxide, .995))) +
+    geom_point(alpha = 0.1) + geom_smooth()
+```
+
+Total sulfur dioxide and free sulfur dioxide are positively correlated as we assumed in univariate plots section. Coefficient of correlation is 0.651.
+
+```{r echo=FALSE, pH_fixed.acidity}
+ggplot(aes(x = fixed.acidity, y = pH), 
+       data = subset(wines, fixed.acidity <
+                         quantile(wines$fixed.acidity, .99))) +
+    geom_point(alpha = 0.1) + geom_smooth(method = "lm")
+```
+In spite of pretty high absolute value of coefficient of correlation (-0.427) I can't see clear relation in pair pH and fixed acidity.
+
+
+Now I want to scrutinize relation of quality to density and alcohol. These two variables have highest correlation with quality. For each of these variables I'll build scatterplot, box plots for every quality level and summary table for every quality level.
 
 ```{r echo=FALSE, Bivariate_Plots}
 #Analyzing impact of density to quality
-ggplot(aes(x = density, y = quality), data = subset(wines, density < quantile(wines$density, .999))) +
+ggplot(aes(x = density, y = quality), 
+       data = subset(wines, density < quantile(wines$density, .999))) +
     geom_jitter(height = 0.25, alpha = 0.05)
-ggplot(aes(y = density, x = quality), data = subset(wines, residual.sugar < quantile(wines$residual.sugar, .999))) +
+ggplot(aes(y = density, x = quality), 
+       data = subset(wines, residual.sugar < 
+                         quantile(wines$residual.sugar, .999))) +
     geom_boxplot()
 tapply(wines$density, wines$quality, summary)
 ```
@@ -161,7 +245,8 @@ Here we can see that wines with quality level of 5 tend to be more dense and win
 
 ```{r echo=FALSE, Bivariate_Plots_2}
 #Analyzing impact of alcohol to quality
-ggplot(aes(x = alcohol, y = quality), data = wines) + geom_jitter(height = 0.25, alpha = 0.02)
+ggplot(aes(x = alcohol, y = quality), data = wines) +
+    geom_jitter(height = 0.25, alpha = 0.02)
 ggplot(aes(y = alcohol, x = quality), data = wines) + geom_boxplot()
 tapply(wines$alcohol, wines$quality, summary)
 ```
@@ -204,9 +289,10 @@ wines$density.bin <- cut(wines$density, c(0.9,0.9915,0.9935,0.996,1.1))
 wines$alcohol.bin <- cut(wines$alcohol, c(8,9.5,10.4,11.4,14.2))
 
 # 3factor plots
-ggplot(aes(y = density, x = alcohol, color = residual.sugar), data = 
-           subset(wines, density < quantile(wines$density, .999))) + geom_point()
-ggplot(aes(y = density, x = alcohol, color = residual.sugar.bin), data = wines) +
+ggplot(aes(y = density, x = alcohol, color = residual.sugar), 
+       data = subset(wines, density < quantile(wines$density, .999))) +
+    geom_point()
+ggplot(aes(y = density, x = alcohol, color = residual.sugar.bin), data = wines)+
     geom_smooth()
 
 ```
@@ -215,18 +301,19 @@ First two plot of this section show us that density depends on alcohol and resid
 
 ```{r echo=FALSE, Multivariate_Plots_2}
 # 3factor plots
-ggplot(aes(y = density, x = total.sulfur.dioxide, color = fixed.acidity), data = 
-           subset(wines, density < quantile(wines$density, .999))) + geom_point()
-ggplot(aes(y = density, x = total.sulfur.dioxide, color = fixed.acidity.bin), data = 
-           wines) + geom_smooth()
+ggplot(aes(y = density, x = total.sulfur.dioxide, color = fixed.acidity), 
+       data = subset(wines, density < quantile(wines$density, .999))) +
+    geom_point()
+ggplot(aes(y = density, x = total.sulfur.dioxide, color = fixed.acidity.bin),
+       data = wines) + geom_smooth()
 
 ```
 
-I've made last plot to show how quality and total sulfur dioxide relation depends on density and alcohol. 
+I've made last plot to show how quality depends on density and alcohol bins. 
 
 ```{r echo=FALSE, Multivariate_Plots_3}
-ggplot(aes(y = quality, x = total.sulfur.dioxide), data = wines) +
-    facet_grid(density.bin ~ alcohol.bin) + geom_point(alpha = 0.1)
+ggplot(aes(y = quality_int, x = 0), data = wines[!is.na(wines$alcohol.bin),]) +
+    facet_grid(alcohol.bin ~ density.bin) + geom_boxplot()
 ```
 
 After scrutinizing data it's time for model building. First of all I want to show how powerful could be prediction models even so simple as linear regression model. Let's build linear regression model to predict density. In our first try we'll use all of available variables to build our model. 
@@ -240,7 +327,7 @@ summary(lm_density_1)
 
 ```
 
-This model looks good at first sight. We have extremly high R-squared and all variables are statistically significant. But this model has multicollinearity and in my oppinion 11 exogenous variable is too much for liner regression model. I'll skip few steps where I removed 7 variable for different reasons. Here is my final model.
+This model looks good at first sight. We have extremely high R-squared and all variables are statistically significant. But this model has multicollinearity and in my opinion 11 exogenous variable is too much for liner regression model. I'll skip few steps where I removed 7 variable for different reasons. Here is my final model.
 
 ```{r echo=FALSE, Prediction_of_density_2}
 #Final model
@@ -262,7 +349,8 @@ We got model with R-squared equals 0.2819. Even though we used all the variables
 
 ```{r echo=FALSE, Prediction_of_quality_2}
 #Final model
-lm_quality_2 <- lm(quality~ volatile.acidity + residual.sugar + alcohol+ density, data = wines_for_prediction)
+lm_quality_2 <- lm(quality~ volatile.acidity + residual.sugar + alcohol +
+                       density, data = wines_for_prediction)
 summary(lm_quality_2)
 ```
 
@@ -295,7 +383,8 @@ In this section I want to show 3 most important plots from this project.
 
 ```{r echo=FALSE, Plot_One}
 ggplot(aes(quality), data = wines) + geom_bar(fill = I('blue')) + 
-    labs(x = "Quality (scale from 1 to 10)", y = "Frequency", title = "Quality distribution") 
+    labs(x = "Quality (scale from 1 to 10)", y = "Frequency",
+         title = "Quality distribution") 
 
 ```
 
@@ -306,8 +395,10 @@ This plot is important for our analysis. It shows how much different types of wi
 ### Plot Two
 
 ```{r echo=FALSE, Plot_Two}
-ggplot(aes(y = alcohol, x = quality), data = wines) + geom_boxplot(color = I('blue'), outlier.colour=I("black")) + 
-    labs(x = "Quality (scale from 1 to 10)", y = "Alcohol (% by volume)", title = "Alcohol distribution by Quality") + 
+ggplot(aes(y = alcohol, x = quality), data = wines) + 
+    geom_boxplot(color = I('blue'), outlier.colour=I("black")) + 
+    labs(x = "Quality (scale from 1 to 10)", y = "Alcohol (% by volume)", 
+         title = "Alcohol distribution by Quality") + 
     stat_summary(fun.y = mean, geom = "point", shape = 4, color = I("red"))
 ```
 
@@ -318,9 +409,13 @@ This is plot of the most correlated variable in dataset to quality. It shows tha
 ### Plot Three
 
 ```{r echo=FALSE, Plot_Three}
-ggplot(aes(y = density, x = alcohol, color = residual.sugar), data = subset(wines, density < quantile(wines$density, .999))) + 
-    geom_point(alpha = 0.5) + scale_colour_gradient(low = "#33ccff", high = "#0000cc", name = "Residual sugar (g / dm^3)") + 
-    labs(x = "Alcohol (% by volume)", y = "Density (g / cm^3)", title = "Alcohol and Sugar impact on Density of wine")
+ggplot(aes(y = density, x = alcohol, color = residual.sugar), 
+       data = subset(wines, density < quantile(wines$density, .999))) + 
+    geom_point(alpha = 0.5) + 
+    scale_colour_gradient(low = "#33ccff", high = "#0000cc", 
+                          name = "Residual sugar (g / dm^3)") + 
+    labs(x = "Alcohol (% by volume)", y = "Density (g / cm^3)", 
+         title = "Alcohol and Sugar impact on Density of wine")
 ```
 
 ### Description Three
